@@ -1,5 +1,7 @@
 import pandas as pd
 import budget_management as bm
+#print("RUNNING:", __file__)
+#print("MENU VERSION: v9-11-enabled")
 from data_management import *
 def handle_set_income():
     """Ask the user for monthly income and store it in budget_management."""
