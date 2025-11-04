@@ -1,8 +1,15 @@
 import pandas as pd
 import budget_management as bm
-#print("RUNNING:", __file__)
-#print("MENU VERSION: v9-11-enabled")
-from data_management import *
+from data_management import *   # uses your handlers for import/view/add/edit/delete/save
+
+# Try to import Carolina's analysis handlers (optional safeguard)
+try:
+    import handlers_analysis as ha
+except ImportError:
+    ha = None  # if the file isn't in develop yet, we'll warn the user
+
+# ---------- Sally's budget handlers ----------
+
 def handle_set_income():
     """Ask the user for monthly income and store it in budget_management."""
     try:
@@ -11,7 +18,6 @@ def handle_set_income():
         print(f"✅ Income saved: ${val:.2f}")
     except ValueError:
         print("⚠️ Invalid amount. Please try again.")
-
 
 def handle_set_budgets(df):
     """
@@ -22,12 +28,12 @@ def handle_set_budgets(df):
         print("⚠️ Load a CSV first (option 0) or use test data.")
         return df
 
-    try:
-        cats = sorted(df["Category"].dropna().unique().tolist())
-    except KeyError:
+    # Ensure Category column exists
+    if "Category" not in df.columns:
         print("⚠️ DataFrame is missing 'Category' column.")
         return df
 
+    cats = sorted(df["Category"].dropna().unique().tolist())
     print("\n🗂️ Budgets per category (press Enter for 0):")
     budgets = {}
     for c in cats:
@@ -40,7 +46,6 @@ def handle_set_budgets(df):
     bm.set_category_budgets(budgets)
     print("✅ Budgets saved.")
     return df
-
 
 def handle_check_budget(df):
     """
@@ -62,10 +67,21 @@ def handle_check_budget(df):
         print(" -", t)
     return df
 
-FILE_PATH = "data/transactions.csv"
+# ---------- Small helper ----------
+def ensure_df(df):
+    if df is None or getattr(df, "empty", False):
+        print("⚠️ Load a CSV first (option 0) before running this option.")
+        return None
+    return df
 
+# ---------- Main loop ----------
 def main():
-    df = handle_import(FILE_PATH)
+    FILE_PATH = "data/transactions.csv"  # adjust if your CSV lives elsewhere
+    # Option A: auto-load at start. Option B: set df=None and force user to choose 0 first.
+    try:
+        df = handle_import(FILE_PATH)
+    except Exception:
+        df = None
 
     while True:
         print("\n===== PERSONAL FINANCE TRACKER =====")
@@ -75,35 +91,93 @@ def main():
         print("3. Add Transaction")
         print("4. Edit Transaction")
         print("5. Delete Transaction")
-        print("9. Set Monthly Income")
-        print("10. Set Category Budget")
-        print("11. Check Budget Status")
+        print("6. Monthly Totals (Analysis)")          # Carolina
+        print("7. Spend by Category (Analysis)")       # Carolina
+        print("8. Top Spending Category (Analysis)")   # Carolina
+        print("9. Set Monthly Income")                 # Sally
+        print("10. Set Category Budget")               # Sally
+        print("11. Check Budget Status")               # Sally
         print("13. Save and Exit")
 
-        choice = input("Choose an option: ")
+        choice = input("Choose an option: ").strip()
 
         if choice == "0":
             df = handle_import(FILE_PATH)
+
         elif choice == "1":
             handle_view_all(df)
+
         elif choice == "2":
             handle_view_by_date(df)
+
         elif choice == "3":
             df = handle_add(df)
+
         elif choice == "4":
             df = handle_edit(df)
+
         elif choice == "5":
             df = handle_delete(df)
+
+        # ---------- Carolina's options ----------
+        elif choice == "6":
+            if ha is None:
+                print("⚠️ Analysis handlers not available. Pull/merge analysis files first.")
+            else:
+                tmp = ensure_df(df)
+                if tmp is not None:
+                    try:
+                        # Adjust name if Carolina used a different one
+                        df = ha.handle_monthly_totals(tmp)
+                    except AttributeError:
+                        print("⚠️ Ask Carolina the exact function name for monthly totals.")
+                    except Exception as e:
+                        print("⚠️ Error:", e)
+
+        elif choice == "7":
+            if ha is None:
+                print("⚠️ Analysis handlers not available. Pull/merge analysis files first.")
+            else:
+                tmp = ensure_df(df)
+                if tmp is not None:
+                    try:
+                        df = ha.handle_spend_by_category(tmp)
+                    except AttributeError:
+                        print("⚠️ Ask Carolina the exact function name for spend by category.")
+                    except Exception as e:
+                        print("⚠️ Error:", e)
+
+        elif choice == "8":
+            if ha is None:
+                print("⚠️ Analysis handlers not available. Pull/merge analysis files first.")
+            else:
+                tmp = ensure_df(df)
+                if tmp is not None:
+                    try:
+                        df = ha.handle_top_spending_category(tmp)
+                    except AttributeError:
+                        print("⚠️ Ask Carolina the exact function name for top spending category.")
+                    except Exception as e:
+                        print("⚠️ Error:", e)
+
+        # ---------- Sally's budget options ----------
         elif choice == "9":
             handle_set_income()
+
         elif choice == "10":
             df = handle_set_budgets(df)
+
         elif choice == "11":
             df = handle_check_budget(df)
+
         elif choice == "13":
-            handle_save(df, FILE_PATH)
+            try:
+                handle_save(df, FILE_PATH)
+            except Exception:
+                pass
             print("👋 Goodbye!")
             break
+
         else:
             print("❌ Invalid option. Try again.")
 
